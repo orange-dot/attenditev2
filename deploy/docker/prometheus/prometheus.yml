@@ -1,0 +1,59 @@
+# Prometheus Configuration - Development
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: development
+    cluster: local
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Platform API
+  - job_name: 'platform-api'
+    static_configs:
+      - targets: ['platform:8080']
+    metrics_path: /metrics
+
+  # Keycloak
+  - job_name: 'keycloak'
+    static_configs:
+      - targets: ['keycloak:8180']
+    metrics_path: /metrics
+
+  # NATS
+  - job_name: 'nats'
+    static_configs:
+      - targets: ['nats:8222']
+    metrics_path: /metrics
+
+  # MinIO
+  - job_name: 'minio'
+    static_configs:
+      - targets: ['minio:9000']
+    metrics_path: /minio/v2/metrics/cluster
+
+  # OPA
+  - job_name: 'opa'
+    static_configs:
+      - targets: ['opa:8181']
+    metrics_path: /metrics
+
+  # PostgreSQL (via postgres_exporter if added)
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']

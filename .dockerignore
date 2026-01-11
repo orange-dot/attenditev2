@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test
+*.test
+coverage.out
+coverage.html
+
+# Dependencies (will be downloaded in container)
+vendor/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Docker
+deploy/docker/.env
+deploy/docker/*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node (if any frontend)
+node_modules/
+npm-debug.log
+
+# Large files
+*.vhdx
+*.iso
+*.zip
+*.tar.gz

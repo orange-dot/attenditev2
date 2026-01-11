@@ -1,0 +1,163 @@
+# AI Demo Setup (~3 GB)
+# Minimalna konfiguracija za demonstraciju AI detekcije anomalija
+#
+# Pokreni sa: docker-compose -f docker-compose.ai-demo.yml up -d
+#
+# Komponente:
+# - PostgreSQL (baza)
+# - KurrentDB (event sourcing)
+# - AI Mock Service (simulacija LLM-a)
+# - Platform API
+# - Demo UI (nginx)
+#
+# Pristup:
+# - Demo UI: http://localhost:3001
+# - Platform API: http://localhost:8080
+# - AI Mock: http://localhost:5000
+# - KurrentDB UI: http://localhost:2113
+
+version: '3.8'
+
+services:
+  # ===========================================
+  # PostgreSQL - Baza podataka
+  # ===========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-demo-postgres
+    environment:
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: platform_dev_2024
+      POSTGRES_DB: platform
+    ports:
+      - "5500:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - ai-demo-net
+
+  # ===========================================
+  # KurrentDB - Event Sourcing Database
+  # ===========================================
+  kurrentdb:
+    image: kurrentplatform/kurrentdb:latest
+    container_name: ai-demo-kurrentdb
+    command: --insecure --run-projections=All --enable-atom-pub-over-http
+    ports:
+      - "2113:2113"
+      - "1113:1113"
+    volumes:
+      - kurrentdb_data:/var/lib/eventstore
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2113/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - ai-demo-net
+
+  # ===========================================
+  # AI Mock Service - Simulacija LLM-a
+  # ===========================================
+  ai-mock:
+    build:
+      context: ../../services/ai-mock
+      dockerfile: Dockerfile
+    container_name: ai-demo-ai-mock
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - ai-demo-net
+
+  # ===========================================
+  # Platform API
+  # ===========================================
+  platform:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: ai-demo-platform
+    environment:
+      ENV: development
+      SERVER_PORT: "8080"
+      # Database
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: platform
+      DB_PASSWORD: platform_dev_2024
+      DB_NAME: platform
+      # KurrentDB
+      KURRENTDB_HOST: kurrentdb
+      KURRENTDB_PORT: "2113"
+      KURRENTDB_INSECURE: "true"
+      # Auth (disabled for demo)
+      JWT_SECRET: demo-secret
+      # AI Service
+      AI_ENABLED: "true"
+      AI_SERVICE_URL: http://ai-mock:5000
+      # OPA (disabled for demo)
+      OPA_ENABLED: "false"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kurrentdb:
+        condition: service_healthy
+      ai-mock:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - ai-demo-net
+
+  # ===========================================
+  # Demo UI - React Frontend
+  # ===========================================
+  demo-ui:
+    build:
+      context: ../../web
+      dockerfile: Dockerfile
+    container_name: ai-demo-ui
+    ports:
+      - "3001:80"
+    depends_on:
+      platform:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - ai-demo-net
+
+volumes:
+  postgres_data:
+    driver: local
+  kurrentdb_data:
+    driver: local
+
+networks:
+  ai-demo-net:
+    name: ai-demo
+    driver: bridge

@@ -1,0 +1,125 @@
+# ===========================================
+# Go
+# ===========================================
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.html
+vendor/
+
+# ===========================================
+# Node.js / Frontend
+# ===========================================
+node_modules/
+web/node_modules/
+web/dist/
+web/.vite/
+*.tsbuildinfo
+.npm
+.pnpm-store/
+
+# ===========================================
+# Python (AI Mock Service)
+# ===========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.venv/
+services/ai-mock/venv/
+
+# ===========================================
+# IDE / Editor
+# ===========================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# ===========================================
+# OS Files
+# ===========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ===========================================
+# Environment & Secrets
+# ===========================================
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+*.key
+*.crt
+!deploy/docker/certs/.gitkeep
+
+# ===========================================
+# Logs
+# ===========================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===========================================
+# Temporary / Build
+# ===========================================
+tmp/
+temp/
+dist/
+build/
+.cache/
+
+# ===========================================
+# Docker
+# ===========================================
+docker-compose.override.yml
+.docker/
+
+# ===========================================
+# Database / Storage (local volumes)
+# ===========================================
+*.db
+*.sqlite
+*.sqlite3
+data/
+postgres_data/
+kurrentdb_data/
+minio_data/
+
+# ===========================================
+# Test / Coverage
+# ===========================================
+coverage/
+.nyc_output/
+junit.xml
+test-results/
+
+# ===========================================
+# Air (Go hot reload)
+# ===========================================
+tmp/air/
+
+# ===========================================
+# Claude Code (AI assistant sessions)
+# ===========================================
+.claude/

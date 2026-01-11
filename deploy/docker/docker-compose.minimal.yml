@@ -1,0 +1,105 @@
+# Minimalni Development Setup (~5 GB)
+# Samo osnovne komponente za razvoj
+#
+# Pokreni sa: docker-compose -f docker-compose.minimal.yml up -d
+#
+# Komponente:
+# - PostgreSQL (baza)
+# - NATS (event bus)
+# - Platform API
+
+version: '3.8'
+
+services:
+  # ===========================================
+  # PostgreSQL - Glavna baza podataka
+  # ===========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: platform-postgres
+    environment:
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: platform_dev_2024
+      POSTGRES_DB: platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===========================================
+  # NATS JetStream - Event Bus
+  # ===========================================
+  nats:
+    image: nats:2.10-alpine
+    container_name: platform-nats
+    command: ["--jetstream", "--store_dir=/data", "-m", "8222"]
+    ports:
+      - "4222:4222"   # Client
+      - "8222:8222"   # Monitoring
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ===========================================
+  # Platform API
+  # ===========================================
+  platform:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: platform-api
+    environment:
+      ENV: development
+      SERVER_PORT: "8080"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: platform
+      DB_PASSWORD: platform_dev_2024
+      DB_NAME: platform
+      NATS_URL: nats://nats:4222
+      JWT_SECRET: dev-secret-change-in-production
+      OPA_ENABLED: "false"
+      # Privacy
+      PRIVACY_FACILITY_TYPE: central
+      PRIVACY_FACILITY_CODE: CENTRAL-DEV-001
+      PRIVACY_HMAC_KEY: dev-hmac-key-change-in-production
+      PRIVACY_GUARD_ENABLED: "true"
+      PRIVACY_BLOCK_VIOLATIONS: "true"
+      # Event Store
+      EVENTSTORE_ENABLED: "true"
+      LOG_LEVEL: debug
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  nats_data:
+    driver: local
+
+networks:
+  default:
+    name: platform-minimal

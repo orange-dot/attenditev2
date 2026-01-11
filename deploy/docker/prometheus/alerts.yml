@@ -1,0 +1,119 @@
+# Prometheus Alert Rules
+groups:
+  - name: platform
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on {{ $labels.instance }}"
+          description: "Error rate is {{ $value | humanizePercentage }} (> 5%)"
+
+      # High latency
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency on {{ $labels.instance }}"
+          description: "95th percentile latency is {{ $value | humanizeDuration }}"
+
+      # Service down
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.instance }} has been down for more than 1 minute"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanize }}MB"
+
+  - name: database
+    rules:
+      # PostgreSQL connection pool exhausted
+      - alert: PostgresConnectionsHigh
+        expr: db_connections_active > 180
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL connections high"
+          description: "Active connections: {{ $value }}/200"
+
+      # Slow queries
+      - alert: SlowQueries
+        expr: histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow database queries"
+          description: "95th percentile query time is {{ $value | humanizeDuration }}"
+
+  - name: coordination
+    rules:
+      # Events not being processed
+      - alert: EventProcessingBacklog
+        expr: coordination_events_pending > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Event processing backlog"
+          description: "{{ $value }} events pending processing"
+
+      # High escalation rate
+      - alert: HighEscalationRate
+        expr: rate(coordination_events_escalated_total[1h]) / rate(coordination_events_total[1h]) > 0.2
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High escalation rate"
+          description: "{{ $value | humanizePercentage }} of events are being escalated"
+
+      # Critical events not acknowledged
+      - alert: CriticalEventNotAcknowledged
+        expr: coordination_critical_events_unacknowledged > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical event not acknowledged"
+          description: "{{ $value }} critical events pending acknowledgment for >15 minutes"
+
+  - name: infrastructure
+    rules:
+      # NATS cluster issues
+      - alert: NATSClusterUnhealthy
+        expr: nats_cluster_size < 3
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "NATS cluster unhealthy"
+          description: "Cluster size is {{ $value }}, expected 3"
+
+      # MinIO disk space
+      - alert: MinIODiskSpaceLow
+        expr: minio_disk_storage_free_bytes / minio_disk_storage_total_bytes < 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MinIO disk space low"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining"
