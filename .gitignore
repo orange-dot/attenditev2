@@ -101,7 +101,7 @@ docker-compose.override.yml
 *.db
 *.sqlite
 *.sqlite3
-data/
+/data/
 postgres_data/
 kurrentdb_data/
 minio_data/
