@@ -1,6 +1,7 @@
 # Multi-stage build for Go application
+# Note: BuildKit cache mounts require DOCKER_BUILDKIT=1
 # Stage 1: Build
-FROM golang:1.24-alpine AS builder
+FROM golang:alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
@@ -10,17 +11,19 @@ WORKDIR /app
 
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./
-RUN go mod download
+
+# Use BuildKit cache mount for Go modules (drastično smanjuje rebuild vreme)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 # Copy source code
 COPY . .
 
-# Ensure go.mod is tidy
-RUN go mod tidy
-
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s -X main.version=${VERSION:-dev} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+# Build the application with cache
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s -X main.version=${VERSION:-dev}" \
     -o /app/platform \
     ./cmd/platform
 

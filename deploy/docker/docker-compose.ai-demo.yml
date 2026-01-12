@@ -14,7 +14,7 @@
 # - Demo UI: http://localhost:3001
 # - Platform API: http://localhost:8080
 # - AI Mock: http://localhost:5000
-# - KurrentDB UI: http://localhost:2113
+# - KurrentDB UI: http://localhost:21130
 
 version: '3.8'
 
@@ -47,16 +47,25 @@ services:
   # KurrentDB - Event Sourcing Database
   # ===========================================
   kurrentdb:
-    image: kurrentplatform/kurrentdb:latest
+    image: eventstore/eventstore:23.10.0-bookworm-slim
     container_name: ai-demo-kurrentdb
-    command: --insecure --run-projections=All --enable-atom-pub-over-http
+    environment:
+      - EVENTSTORE_INSECURE=true
+      - EVENTSTORE_RUN_PROJECTIONS=All
+      - EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP=true
+      - EVENTSTORE_MEM_DB=false
+      - EVENTSTORE_INT_IP=0.0.0.0
+      - EVENTSTORE_EXT_IP=0.0.0.0
+      - EVENTSTORE_ADVERTISE_HOST_TO_CLIENT_AS=kurrentdb
+      - EVENTSTORE_CLUSTER_SIZE=1
+      - EVENTSTORE_START_STANDARD_PROJECTIONS=true
     ports:
-      - "2113:2113"
-      - "1113:1113"
+      - "21130:2113"
+      - "11130:1113"
     volumes:
       - kurrentdb_data:/var/lib/eventstore
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:2113/health/live"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:2113/health/live || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

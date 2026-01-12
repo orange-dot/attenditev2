@@ -83,6 +83,34 @@ Srbija već ima funkcionalan primer: **[eZUP sistem](https://www.ite.gov.rs/teks
 - Pojedine institucije (sudovi, pojedini CSR-ovi) pokazuju da sistem MOŽE funkcionisati profesionalno i transparentno
 - Ovi primeri demonstriraju da je promena moguća uz sistemski pristup
 
+#### G. Studija slučaja: Međuinstitucionalni vakuum
+
+**Slučaj iz prakse zdravstvene inspekcije:** Pacijentkinja (60+ godina) sa karcinomom debelog creva lečena u dve ustanove - regionalnoj bolnici i referentnom onkološkom centru.
+
+**Utvrđeni sistemski propusti:**
+
+1. **Nepostojanje razmene podataka:** U informacionom sistemu regionalne bolnice "nema evidencije" da se pacijentkinja javila za zakazivanje terapije - dok referentni centar ima drugačije podatke. Nijedna ustanova nije imala uvid u kompletnu sliku.
+
+2. **Samopotvrđujući interni nadzor:** Obe ustanove su sprovele vanrednu unutrašnju proveru kvaliteta stručnog rada. Obe komisije su zaključile da su "sve mere bile u skladu sa medicinskom doktrinom" - uprkos očiglednom propustu u koordinaciji.
+
+3. **Strukturni kapacitetni deficit:** Izveštaj referentnog centra eksplicitno navodi da je za područje sa ~2 miliona stanovnika dostupan samo JEDAN referentni centar za određene vrste terapije - što stvara sistemski bottleneck.
+
+**Zašto je platforma neophodna:** Da je postojao sistem koji omogućava uvid u postupanje svih ustanova, propust bi bio detektovan u realnom vremenu - pre nego što je pacijentkinja "ispala" između institucija.
+
+#### H. Studija slučaja: Administrativni vakuum
+
+**Slučaj iz prakse:** Pacijentkinja (29 godina) sa metastatskim karcinomom. Nadležni lekar je uputio zahtev fondu zdravstvenog osiguranja za odobrenje nastavka lečenja.
+
+**Hronologija propusta:**
+- Zahtev primljen i inicijalno obrađen (zatraženi dodatni podaci)
+- Podaci dostavljeni istog dana
+- **112 dana bez odgovora**
+- Pacijentkinja umrla
+
+**Sistemska implikacija:** Lekar nije mogao da nastavi lečenje (nema odobrenje) niti da obavesti pacijentkinju o konačnoj odluci (odluka nije doneta). Pacijentkinja je ostala u administrativnom limbu.
+
+**Kapacitet platforme:** AI sistem može detektovati zahteve koji predugo čekaju na odgovor i automatski eskalirati slučajeve. Nijedan zahtev onkološkog pacijenta ne bi smeo da ostane bez odgovora 112 dana.
+
 ### Predlog za razmatranje
 
 Na osnovu analize, pripremili smo tehničku specifikaciju za platformu koja bi mogla olakšati koordinaciju između javnih službi. Specifikacija se oslanja na iskustva zemalja koje su uspešno implementirale slične sisteme:
@@ -242,6 +270,34 @@ Serbia already has a functional example: **[eZUP system](https://www.ite.gov.rs/
 - 72% of social work centers responded to FOI requests within 48 hours
 - Certain institutions (courts, some social work centers) demonstrate that the system CAN function professionally and transparently
 - These examples demonstrate that change is possible with a systematic approach
+
+#### G. Case study: Inter-institutional vacuum
+
+**Case from health inspection practice:** A patient (60+ years old) with colon cancer treated at two institutions - a regional hospital and a reference oncology center.
+
+**Identified systemic failures:**
+
+1. **Absence of data exchange:** The regional hospital's information system showed "no evidence" that the patient came to schedule therapy - while the reference center had different records. Neither institution had visibility into the complete picture.
+
+2. **Self-validating internal oversight:** Both institutions conducted extraordinary internal quality reviews. Both commissions concluded that "all measures were in accordance with medical doctrine" - despite the obvious coordination failure.
+
+3. **Structural capacity deficit:** The reference center's report explicitly states that for an area with ~2 million inhabitants, only ONE reference center is available for certain types of therapy - creating a systemic bottleneck.
+
+**Why the platform is essential:** If a system existed that enabled visibility into all institutions' actions, the failure would have been detected in real-time - before the patient "fell through the cracks" between institutions.
+
+#### H. Case study: Administrative vacuum
+
+**Case from practice:** A patient (29 years old) with metastatic cancer. The attending physician submitted a request to the health insurance fund for approval to continue treatment.
+
+**Timeline of failure:**
+- Request received and initially processed (additional data requested)
+- Data provided the same day
+- **112 days without response**
+- Patient died
+
+**Systemic implication:** The physician could not continue treatment (no approval) nor inform the patient of the final decision (no decision was made). The patient remained in administrative limbo.
+
+**Platform capability:** An AI system can detect requests that have been waiting too long for a response and automatically escalate cases. No oncology patient's request should remain unanswered for 112 days.
 
 ### A constructive proposal
 

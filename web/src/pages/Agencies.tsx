@@ -104,18 +104,26 @@ export function Agencies() {
 
 function AgencyCard({ agency, onSelect }: { agency: Agency; onSelect: () => void }) {
   const typeColors: Record<string, string> = {
-    SOCIAL_WELFARE: 'bg-blue-100 text-blue-700',
+    SOCIAL_SERVICES: 'bg-blue-100 text-blue-700',
     HEALTHCARE: 'bg-green-100 text-green-700',
     EDUCATION: 'bg-purple-100 text-purple-700',
     POLICE: 'bg-red-100 text-red-700',
+    JUDICIARY: 'bg-amber-100 text-amber-700',
+    LOCAL_GOVERNMENT: 'bg-cyan-100 text-cyan-700',
+    TAX: 'bg-orange-100 text-orange-700',
+    EMERGENCY: 'bg-rose-100 text-rose-700',
     OTHER: 'bg-gray-100 text-gray-700',
   }
 
   const typeLabels: Record<string, string> = {
-    SOCIAL_WELFARE: 'Socijalna zaštita',
+    SOCIAL_SERVICES: 'Socijalna zaštita',
     HEALTHCARE: 'Zdravstvo',
     EDUCATION: 'Obrazovanje',
     POLICE: 'Policija',
+    JUDICIARY: 'Pravosuđe',
+    LOCAL_GOVERNMENT: 'Lokalna samouprava',
+    TAX: 'Poreska uprava',
+    EMERGENCY: 'Hitne službe',
     OTHER: 'Ostalo',
   }
 
@@ -130,7 +138,7 @@ function AgencyCard({ agency, onSelect }: { agency: Agency; onSelect: () => void
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 truncate">{agency.name}</h3>
-          <p className="text-sm text-gray-500 truncate">{agency.jurisdiction}</p>
+          <p className="text-sm text-gray-500 truncate font-mono">{agency.code}</p>
         </div>
       </div>
 
@@ -138,7 +146,7 @@ function AgencyCard({ agency, onSelect }: { agency: Agency; onSelect: () => void
         <span className={`badge ${typeColors[agency.type] || typeColors.OTHER}`}>
           {typeLabels[agency.type] || agency.type}
         </span>
-        {agency.status === 'ACTIVE' && (
+        {agency.status === 'active' && (
           <span className="badge bg-green-100 text-green-700">Aktivna</span>
         )}
       </div>
@@ -161,9 +169,9 @@ function CreateAgencyModal({
   isLoading: boolean
 }) {
   const [form, setForm] = useState<CreateAgencyRequest>({
+    code: '',
     name: '',
-    type: 'SOCIAL_WELFARE',
-    jurisdiction: '',
+    type: 'SOCIAL_SERVICES',
   })
 
   return (
@@ -185,6 +193,21 @@ function CreateAgencyModal({
         >
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Kod agencije
+            </label>
+            <input
+              type="text"
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+              className="input"
+              placeholder="npr. CSR-BG"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">Jedinstveni identifikator (2-50 karaktera)</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Naziv
             </label>
             <input
@@ -192,6 +215,7 @@ function CreateAgencyModal({
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="input"
+              placeholder="npr. Centar za socijalni rad Beograd"
               required
             />
           </div>
@@ -205,26 +229,16 @@ function CreateAgencyModal({
               onChange={(e) => setForm({ ...form, type: e.target.value })}
               className="input"
             >
-              <option value="SOCIAL_WELFARE">Socijalna zaštita</option>
+              <option value="SOCIAL_SERVICES">Socijalna zaštita</option>
               <option value="HEALTHCARE">Zdravstvo</option>
               <option value="EDUCATION">Obrazovanje</option>
               <option value="POLICE">Policija</option>
+              <option value="JUDICIARY">Pravosuđe</option>
+              <option value="LOCAL_GOVERNMENT">Lokalna samouprava</option>
+              <option value="TAX">Poreska uprava</option>
+              <option value="EMERGENCY">Hitne službe</option>
               <option value="OTHER">Ostalo</option>
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Jurisdikcija
-            </label>
-            <input
-              type="text"
-              value={form.jurisdiction}
-              onChange={(e) => setForm({ ...form, jurisdiction: e.target.value })}
-              className="input"
-              placeholder="npr. Grad Beograd"
-              required
-            />
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -269,20 +283,22 @@ function AgencyDetailModal({
           {/* Agency Info */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <span className="text-sm text-gray-500">ID</span>
-              <p className="font-mono text-sm">{agency.id.slice(0, 8)}...</p>
+              <span className="text-sm text-gray-500">Kod</span>
+              <p className="font-mono text-sm font-semibold">{agency.code}</p>
             </div>
             <div>
               <span className="text-sm text-gray-500">Tip</span>
               <p>{agency.type}</p>
             </div>
             <div>
-              <span className="text-sm text-gray-500">Jurisdikcija</span>
-              <p>{agency.jurisdiction}</p>
+              <span className="text-sm text-gray-500">ID</span>
+              <p className="font-mono text-sm">{agency.id.slice(0, 8)}...</p>
             </div>
             <div>
               <span className="text-sm text-gray-500">Status</span>
-              <p>{agency.status}</p>
+              <p className={agency.status === 'active' ? 'text-green-600' : 'text-gray-500'}>
+                {agency.status === 'active' ? 'Aktivna' : agency.status}
+              </p>
             </div>
           </div>
 
@@ -304,17 +320,18 @@ function AgencyDetailModal({
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                   >
                     <div>
-                      <p className="font-medium">{worker.name}</p>
-                      <p className="text-sm text-gray-500">{worker.role}</p>
+                      <p className="font-medium">{worker.first_name} {worker.last_name}</p>
+                      <p className="text-sm text-gray-500">{worker.position || worker.department || 'Bez pozicije'}</p>
+                      <p className="text-xs text-gray-400 font-mono">{worker.employee_id}</p>
                     </div>
                     <span
                       className={`badge ${
-                        worker.status === 'ACTIVE'
+                        worker.status === 'active'
                           ? 'bg-green-100 text-green-700'
                           : 'bg-gray-100 text-gray-700'
                       }`}
                     >
-                      {worker.status}
+                      {worker.status === 'active' ? 'Aktivan' : worker.status}
                     </span>
                   </div>
                 ))}
@@ -345,9 +362,13 @@ function AddWorkerModal({
   onSuccess: () => void
 }) {
   const [form, setForm] = useState<CreateWorkerRequest>({
-    name: '',
+    employee_id: '',
+    first_name: '',
+    last_name: '',
     email: '',
-    role: 'CASE_WORKER',
+    position: 'Socijalni radnik',
+    department: '',
+    roles: ['CASE_WORKER'],
   })
 
   const createWorker = useMutation({
@@ -357,8 +378,8 @@ function AddWorkerModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-        <div className="flex items-center justify-between p-4 border-b">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
           <h2 className="text-lg font-semibold">Novi radnik</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
@@ -374,15 +395,43 @@ function AddWorkerModal({
         >
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ime i prezime
+              Matični broj zaposlenog
             </label>
             <input
               type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              value={form.employee_id}
+              onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
               className="input"
+              placeholder="npr. EMP-001"
               required
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Ime
+              </label>
+              <input
+                type="text"
+                value={form.first_name}
+                onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                className="input"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Prezime
+              </label>
+              <input
+                type="text"
+                value={form.last_name}
+                onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+                className="input"
+                required
+              />
+            </div>
           </div>
 
           <div>
@@ -400,11 +449,37 @@ function AddWorkerModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Uloga
+              Pozicija
+            </label>
+            <input
+              type="text"
+              value={form.position}
+              onChange={(e) => setForm({ ...form, position: e.target.value })}
+              className="input"
+              placeholder="npr. Socijalni radnik"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Odeljenje
+            </label>
+            <input
+              type="text"
+              value={form.department}
+              onChange={(e) => setForm({ ...form, department: e.target.value })}
+              className="input"
+              placeholder="npr. Služba za zaštitu dece"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Uloga u sistemu
             </label>
             <select
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
+              value={form.roles?.[0] || 'CASE_WORKER'}
+              onChange={(e) => setForm({ ...form, roles: [e.target.value] })}
               className="input"
             >
               <option value="CASE_WORKER">Socijalni radnik</option>

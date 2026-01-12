@@ -260,15 +260,27 @@ func (s *DepseudonymizationService) Depseudonymize(
 	}
 
 	// Get real JMBG from local mapping
-	// Note: This is a simplified implementation. In production,
-	// you would decrypt the JMBG from the mapping's encrypted storage.
 	mapping, err := s.pseudoSvc.repo.GetByPseudonymID(ctx, token.PseudonymID)
 	if err != nil || mapping == nil {
 		return "", fmt.Errorf("mapping not found")
 	}
 
-	// In production, decrypt JMBG here using HSM
-	// For now, we'll need the encrypted JMBG field to be populated
+	// Decrypt JMBG
+	var jmbg string
+	if s.pseudoSvc.encryptor != nil && len(mapping.JMBGEncrypted) > 0 {
+		// Dev mode: decrypt using AES-GCM
+		jmbg, err = s.pseudoSvc.encryptor.Decrypt(mapping.JMBGEncrypted)
+		if err != nil {
+			return "", fmt.Errorf("failed to decrypt JMBG: %w", err)
+		}
+	} else if len(mapping.JMBGEncrypted) > 0 {
+		// Production mode: would use HSM here
+		// TODO: Implement HSM-based decryption for production
+		return "", fmt.Errorf("JMBG decryption requires HSM integration - enable dev mode encryptor for testing")
+	} else {
+		// No encrypted JMBG stored (legacy mapping or test data)
+		return "", fmt.Errorf("no encrypted JMBG available for this mapping")
+	}
 
 	// Audit log - ALWAYS log JMBG access
 	if s.audit != nil {
@@ -276,12 +288,11 @@ func (s *DepseudonymizationService) Depseudonymize(
 			"pseudonym_id": token.PseudonymID,
 			"request_id":   token.RequestID,
 			"usage_count":  token.UsedCount + 1,
+			"jmbg_masked":  MaskJMBG(jmbg), // Log masked version for audit trail
 		})
 	}
 
-	// Return masked JMBG for safety in this demo implementation
-	// In production, return the decrypted real JMBG
-	return "", fmt.Errorf("JMBG decryption requires HSM integration")
+	return jmbg, nil
 }
 
 // RevokeToken revokes a depseudonymization token.
