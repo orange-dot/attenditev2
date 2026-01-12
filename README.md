@@ -120,4 +120,4 @@ DELETE /api/v1/workers/{id}           # Delete worker
 
 ## License
 
-Proprietary - Government of Serbia
+[AGPL-3.0](LICENSE) - GNU Affero General Public License v3.0
