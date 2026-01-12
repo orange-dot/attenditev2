@@ -11,27 +11,46 @@ export interface Agency {
 }
 
 export interface CreateAgencyRequest {
+  code: string
   name: string
   type: string
-  jurisdiction: string
+  parent_id?: string
+  address?: {
+    street?: string
+    city?: string
+    postal_code?: string
+    country?: string
+  }
+  contact?: {
+    phone?: string
+    email?: string
+    website?: string
+  }
 }
 
 export interface Worker {
   id: string
   agency_id: string
+  employee_id: string
+  first_name: string
+  last_name: string
   email: string
-  name: string
-  first_name?: string
-  last_name?: string
-  role: string
+  position: string
+  department?: string
+  roles?: { id: string; role: string; scope: string }[]
   status: string
   created_at: string
+  updated_at?: string
 }
 
 export interface CreateWorkerRequest {
-  name: string
+  employee_id: string
+  first_name: string
+  last_name: string
   email: string
-  role: string
+  position: string
+  department?: string
+  roles?: string[]
 }
 
 // Case types
@@ -76,11 +95,9 @@ export interface Document {
   status: string
   title: string
   description?: string
-  content?: string
-  version: number
+  current_version: number
   owner_agency_id?: string
   case_id?: string
-  metadata?: Record<string, unknown>
   created_at: string
   updated_at: string
 }
@@ -88,9 +105,8 @@ export interface Document {
 export interface CreateDocumentRequest {
   title: string
   type: string
-  content: string
+  description?: string
   case_id?: string
-  metadata?: Record<string, unknown>
 }
 
 export interface DocumentVersion {

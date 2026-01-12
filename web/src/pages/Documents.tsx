@@ -177,7 +177,7 @@ function DocumentCard({ document, onSelect }: { document: Document; onSelect: ()
           <div>
             <h3 className="font-semibold text-gray-900">{document.title}</h3>
             <p className="text-sm text-gray-500">
-              {typeLabels[document.type] || document.type} • v{document.version}
+              {typeLabels[document.type] || document.type} • v{document.current_version}
             </p>
           </div>
         </div>
@@ -187,12 +187,9 @@ function DocumentCard({ document, onSelect }: { document: Document; onSelect: ()
         </div>
       </div>
 
-      {(() => {
-        const desc = document.metadata?.description
-        return typeof desc === 'string' ? (
-          <p className="mt-3 text-sm text-gray-600 line-clamp-2">{desc}</p>
-        ) : null
-      })()}
+      {document.description && (
+        <p className="mt-3 text-sm text-gray-600 line-clamp-2">{document.description}</p>
+      )}
 
       <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
         <span className="font-mono text-xs">{document.id.slice(0, 8)}...</span>
@@ -215,8 +212,8 @@ function CreateDocumentModal({
 }) {
   const [form, setForm] = useState<CreateDocumentRequest>({
     title: '',
-    type: 'MEDICAL_REPORT',
-    content: '',
+    type: 'REPORT',
+    description: '',
     case_id: '',
   })
 
@@ -259,25 +256,28 @@ function CreateDocumentModal({
               onChange={(e) => setForm({ ...form, type: e.target.value })}
               className="input"
             >
-              <option value="MEDICAL_REPORT">Medicinski izveštaj</option>
-              <option value="SOCIAL_REPORT">Socijalni izveštaj</option>
-              <option value="LEGAL_DOCUMENT">Pravni dokument</option>
-              <option value="ASSESSMENT">Procena</option>
+              <option value="REPORT">Izveštaj</option>
+              <option value="STATEMENT">Izjava</option>
+              <option value="DECISION">Rešenje</option>
+              <option value="CERTIFICATE">Uverenje</option>
+              <option value="EVIDENCE">Dokaz</option>
+              <option value="FORM">Obrazac</option>
+              <option value="CORRESPONDENCE">Prepiska</option>
+              <option value="CONTRACT">Ugovor</option>
               <option value="OTHER">Ostalo</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sadržaj
+              Opis (opciono)
             </label>
             <textarea
-              value={form.content}
-              onChange={(e) => setForm({ ...form, content: e.target.value })}
-              className="input font-mono text-sm"
-              rows={8}
-              placeholder="Unesite sadržaj dokumenta..."
-              required
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="input"
+              rows={4}
+              placeholder="Unesite opis dokumenta..."
             />
           </div>
 
@@ -368,19 +368,21 @@ function DocumentDetailModal({
             </div>
             <div>
               <span className="text-sm text-gray-500">Verzija</span>
-              <p>v{document.version}</p>
+              <p>v{document.current_version}</p>
             </div>
           </div>
 
-          {/* Content Preview */}
-          <div className="mb-6">
-            <span className="text-sm text-gray-500">Sadržaj</span>
-            <div className="mt-2 p-4 bg-gray-50 rounded-lg">
-              <pre className="text-sm whitespace-pre-wrap font-mono">
-                {document.content || 'Nema sadržaja'}
-              </pre>
+          {/* Description Preview */}
+          {document.description && (
+            <div className="mb-6">
+              <span className="text-sm text-gray-500">Opis</span>
+              <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm whitespace-pre-wrap">
+                  {document.description}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 mb-6 p-4 bg-gray-50 rounded-lg">

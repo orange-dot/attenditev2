@@ -305,14 +305,14 @@ func (c *Case) Transfer(toAgencyID, newLeadWorkerID, actorID, actorAgencyID type
 
 	fromAgencyID := c.OwningAgencyID
 
-	// Previous owner gets read access
-	c.Share(fromAgencyID, AccessLevelRead, actorID, actorAgencyID)
-
-	// Transfer ownership
+	// Transfer ownership first
 	c.OwningAgencyID = toAgencyID
 	c.LeadWorkerID = newLeadWorkerID
 	c.Status = CaseStatusOpen // Reset to open for new agency
 	c.UpdatedAt = time.Now()
+
+	// Previous owner gets read access (must be after ownership change)
+	c.Share(fromAgencyID, AccessLevelRead, actorID, actorAgencyID)
 
 	// Remove new owner from shared list
 	for i, id := range c.SharedWith {

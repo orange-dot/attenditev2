@@ -49,6 +49,9 @@ type PseudonymizationService struct {
 
 	// Audit logger
 	audit AuditLogger
+
+	// Optional encryptor for dev mode (in production, use HSM)
+	encryptor *DevModeEncryptor
 }
 
 // NewPseudonymizationService creates a new pseudonymization service.
@@ -66,6 +69,37 @@ func NewPseudonymizationService(
 		repo:         repo,
 		audit:        audit,
 	}
+}
+
+// NewPseudonymizationServiceWithEncryption creates a service with dev-mode encryption.
+// This allows depseudonymization to work without HSM integration.
+// WARNING: Only use this for development/testing. Production should use HSM.
+func NewPseudonymizationServiceWithEncryption(
+	hmacKey []byte,
+	encryptionKey []byte,
+	facilityCode string,
+	repo PseudonymRepository,
+	audit AuditLogger,
+) (*PseudonymizationService, error) {
+	encryptor, err := NewDevModeEncryptor(encryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create encryptor: %w", err)
+	}
+
+	return &PseudonymizationService{
+		hmacKey:      hmacKey,
+		facilityCode: facilityCode,
+		cache:        make(map[string]PseudonymID),
+		repo:         repo,
+		audit:        audit,
+		encryptor:    encryptor,
+	}, nil
+}
+
+// SetEncryptor sets the dev-mode encryptor for JMBG encryption.
+// This enables depseudonymization without HSM integration.
+func (s *PseudonymizationService) SetEncryptor(encryptor *DevModeEncryptor) {
+	s.encryptor = encryptor
 }
 
 // Pseudonymize converts a JMBG to a PseudonymID.
@@ -106,6 +140,15 @@ func (s *PseudonymizationService) Pseudonymize(ctx context.Context, jmbg string)
 		PseudonymID:  pseudonymID,
 		FacilityCode: s.facilityCode,
 		CreatedAt:    time.Now().UTC(),
+	}
+
+	// Encrypt JMBG if encryptor is available (dev mode)
+	if s.encryptor != nil {
+		encrypted, err := s.encryptor.Encrypt(jmbg)
+		if err != nil {
+			return "", fmt.Errorf("failed to encrypt JMBG: %w", err)
+		}
+		mapping.JMBGEncrypted = encrypted
 	}
 
 	// Store mapping locally (never sent to central)

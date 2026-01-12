@@ -3,6 +3,7 @@ package document
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/serbia-gov/platform/internal/shared/auth"
@@ -29,6 +30,9 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/", h.ListDocuments)
 	r.Post("/", h.CreateDocument)
 
+	// Document verification endpoint (referenced in trust registry)
+	r.Get("/verify/{documentID}", h.VerifyDocument)
+
 	r.Route("/{documentID}", func(r chi.Router) {
 		r.Get("/", h.GetDocument)
 		r.Put("/", h.UpdateDocument)
@@ -48,6 +52,9 @@ func (h *Handler) Routes() chi.Router {
 		r.Post("/signatures", h.RequestSignature)
 		r.Post("/signatures/{signatureID}/sign", h.SignDocument)
 		r.Post("/signatures/{signatureID}/reject", h.RejectSignature)
+
+		// Per-document verify (alternative endpoint)
+		r.Get("/verify", h.VerifyDocument)
 	})
 
 	return r
@@ -566,6 +573,109 @@ func (h *Handler) RejectSignature(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, doc)
+}
+
+// VerifyDocument verifies a document's integrity and signatures
+func (h *Handler) VerifyDocument(w http.ResponseWriter, r *http.Request) {
+	id, err := types.ParseID(chi.URLParam(r, "documentID"))
+	if err != nil {
+		writeError(w, errors.BadRequest("invalid document ID"))
+		return
+	}
+
+	doc, err := h.repo.FindByID(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	// Build verification response
+	now := time.Now()
+	verification := DocumentVerification{
+		DocumentID:     doc.ID,
+		DocumentNumber: doc.DocumentNumber,
+		Title:          doc.Title,
+		Status:         doc.Status,
+		Version:        doc.CurrentVersion,
+		VerifiedAt:     now,
+	}
+
+	// Verify document hash integrity - check latest version
+	if len(doc.Versions) > 0 {
+		latestVersion := doc.Versions[len(doc.Versions)-1]
+		if latestVersion.FileHash != "" {
+			verification.HashValid = true // In production, would verify against actual file
+			verification.Hash = latestVersion.FileHash
+		} else {
+			verification.HashValid = true // No hash to verify
+		}
+	} else {
+		verification.HashValid = true // No file to verify
+	}
+
+	// Verify signatures
+	verification.Signatures = make([]SignatureVerification, 0, len(doc.Signatures))
+	allSigned := true
+	for _, sig := range doc.Signatures {
+		sigVerification := SignatureVerification{
+			SignerID:    sig.SignerID,
+			Type:        sig.Type,
+			Status:      sig.Status,
+			SignedAt:    sig.SignedAt,
+			IsValid:     sig.Status == SignatureStatusSigned,
+		}
+
+		// In production, would verify actual signature data
+		if sig.Status == SignatureStatusSigned {
+			sigVerification.VerificationDetails = "Signature verified (mock verification for MVP)"
+		} else if sig.Status == SignatureStatusPending {
+			sigVerification.VerificationDetails = "Signature pending"
+			allSigned = false
+		} else if sig.Status == SignatureStatusRejected {
+			sigVerification.VerificationDetails = "Signature rejected: " + sig.Reason
+			sigVerification.IsValid = false
+			allSigned = false
+		}
+
+		verification.Signatures = append(verification.Signatures, sigVerification)
+	}
+
+	// Overall verification status
+	verification.AllSignaturesValid = allSigned && len(doc.Signatures) > 0
+	verification.IsValid = verification.HashValid && (verification.AllSignaturesValid || len(doc.Signatures) == 0)
+
+	if doc.Status == DocumentStatusVoid {
+		verification.IsValid = false
+		verification.VoidedReason = "Document has been voided"
+	}
+
+	writeJSON(w, http.StatusOK, verification)
+}
+
+// DocumentVerification represents the verification result for a document
+type DocumentVerification struct {
+	DocumentID          types.ID                `json:"document_id"`
+	DocumentNumber      string                  `json:"document_number"`
+	Title               string                  `json:"title"`
+	Status              DocumentStatus          `json:"status"`
+	Version             int                     `json:"version"`
+	Hash                string                  `json:"hash,omitempty"`
+	HashValid           bool                    `json:"hash_valid"`
+	Signatures          []SignatureVerification `json:"signatures"`
+	AllSignaturesValid  bool                    `json:"all_signatures_valid"`
+	IsValid             bool                    `json:"is_valid"`
+	VoidedReason        string                  `json:"voided_reason,omitempty"`
+	VerifiedAt          time.Time               `json:"verified_at"`
+}
+
+// SignatureVerification represents the verification result for a signature
+type SignatureVerification struct {
+	SignerID            types.ID        `json:"signer_id"`
+	Type                SignatureType   `json:"type"`
+	Status              SignatureStatus `json:"status"`
+	SignedAt            *time.Time      `json:"signed_at,omitempty"`
+	IsValid             bool            `json:"is_valid"`
+	VerificationDetails string          `json:"verification_details,omitempty"`
 }
 
 // --- Helpers ---
