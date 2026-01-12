@@ -194,7 +194,7 @@ Za pilot projekat sa ograničenim resursima, modularni monolit je optimalan izbo
 | **Go jezik** | Jednostavnost, bezbednost, performanse |
 | **Modularni monolit** | Balans između jednostavnosti i fleksibilnosti |
 | **PostgreSQL** | Pouzdana, open source baza sa naprednim funkcijama |
-| **NATS JetStream** | Lightweight event bus za asinhrone operacije |
+| **KurrentDB** | Event store za event sourcing i asinhrone operacije |
 
 ---
 

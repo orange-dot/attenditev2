@@ -19,7 +19,7 @@ Events are the primary mechanism for cross-module communication in the modular m
 │                                                                          │
 │  ┌──────────┐     ┌──────────────┐     ┌──────────────┐                │
 │  │  Module  │────►│  Event Bus   │────►│  Subscribers │                │
-│  │(Publisher)│     │   (NATS)    │     │  (Handlers)  │                │
+│  │(Publisher)│     │ (KurrentDB) │     │  (Handlers)  │                │
 │  └──────────┘     └──────────────┘     └──────────────┘                │
 │                          │                                              │
 │                          ▼                                              │
@@ -750,49 +750,49 @@ type FederationRequestEvent struct {
 
 ---
 
-## NATS Subjects
+## KurrentDB Streams
 
 ```
-# Subject naming: {context}.{entity}.{action}
+# Stream naming: {context}-{entity}-{action}
 
 # Case events
-gov.case.created
-gov.case.status.changed
-gov.case.assigned
-gov.case.transferred
-gov.case.escalated
-gov.case.sla.warning
-gov.case.sla.breached
-gov.case.closed
+gov-case-created
+gov-case-status-changed
+gov-case-assigned
+gov-case-transferred
+gov-case-escalated
+gov-case-sla-warning
+gov-case-sla-breached
+gov-case-closed
 
 # Dispatch events
-gov.dispatch.incident.reported
-gov.dispatch.unit.dispatched
-gov.dispatch.unit.status.changed
-gov.dispatch.unit.location.updated
-gov.dispatch.incident.resolved
+gov-dispatch-incident-reported
+gov-dispatch-unit-dispatched
+gov-dispatch-unit-status-changed
+gov-dispatch-unit-location-updated
+gov-dispatch-incident-resolved
 
 # Document events
-gov.document.created
-gov.document.version.added
-gov.document.signature.requested
-gov.document.signed
-gov.document.signature.rejected
+gov-document-created
+gov-document-version-added
+gov-document-signature-requested
+gov-document-signed
+gov-document-signature-rejected
 
 # Messaging events
-gov.messaging.message.sent
+gov-messaging-message-sent
 
 # Citizen events
-gov.citizen.registered
-gov.citizen.eid.linked
+gov-citizen-registered
+gov-citizen-eid-linked
 
 # Agency events
-gov.agency.worker.added
-gov.agency.worker.role.changed
+gov-agency-worker-added
+gov-agency-worker-role-changed
 
 # Federation events
-gov.federation.agency.connected
-gov.federation.request.received
+gov-federation-agency-connected
+gov-federation-request-received
 ```
 
 ---
@@ -809,12 +809,13 @@ info:
 
 servers:
   production:
-    host: nats.internal:4222
-    protocol: nats
+    host: kurrentdb.internal:2113
+    protocol: http
+    description: KurrentDB/EventStoreDB HTTP API
 
 channels:
   caseCreated:
-    address: gov.case.created
+    address: gov-case-created
     messages:
       caseCreated:
         $ref: '#/components/messages/CaseCreated'

@@ -98,15 +98,15 @@ groups:
 
   - name: infrastructure
     rules:
-      # NATS cluster issues
-      - alert: NATSClusterUnhealthy
-        expr: nats_cluster_size < 3
+      # KurrentDB health issues
+      - alert: KurrentDBUnhealthy
+        expr: up{job="kurrentdb"} == 0
         for: 5m
         labels:
           severity: critical
         annotations:
-          summary: "NATS cluster unhealthy"
-          description: "Cluster size is {{ $value }}, expected 3"
+          summary: "KurrentDB unhealthy"
+          description: "KurrentDB instance {{ $labels.instance }} is down"
 
       # MinIO disk space
       - alert: MinIODiskSpaceLow

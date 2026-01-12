@@ -15,11 +15,11 @@ import (
 // Handler provides HTTP handlers for the agency module
 type Handler struct {
 	repo *Repository
-	bus  *events.Bus
+	bus  events.EventBus
 }
 
 // NewHandler creates a new agency handler
-func NewHandler(repo *Repository, bus *events.Bus) *Handler {
+func NewHandler(repo *Repository, bus events.EventBus) *Handler {
 	return &Handler{repo: repo, bus: bus}
 }
 

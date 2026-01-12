@@ -174,17 +174,17 @@ func main() {
 		// Agency module
 		if app.DB != nil {
 			agencyRepo := agency.NewRepository(app.DB.Pool)
-			agencyHandler := agency.NewHandler(agencyRepo, app.Bus)
+			agencyHandler := agency.NewHandler(agencyRepo, app.EventBus)
 			r.Mount("/", agencyHandler.Routes())
 
 			// Case module
 			caseRepo := caseinfra.NewPostgresRepository(app.DB.Pool)
-			caseHandler := caseapi.NewHandler(caseRepo, app.Bus)
+			caseHandler := caseapi.NewHandler(caseRepo, app.EventBus)
 			r.Mount("/cases", caseHandler.Routes())
 
 			// Document module
 			documentRepo := document.NewRepository(app.DB.Pool)
-			documentHandler := document.NewHandler(documentRepo, app.Bus)
+			documentHandler := document.NewHandler(documentRepo, app.EventBus)
 			r.Mount("/documents", documentHandler.Routes())
 
 			// Audit module - uses EventStoreDB (append-only event store)
@@ -259,7 +259,7 @@ func main() {
 						fmt.Printf("Warning: Federation Gateway initialization failed: %v\n", err)
 					} else {
 						app.FederationGateway = federationGateway
-						gatewayHandler := gateway.NewHandler(federationGateway, app.Bus, r)
+						gatewayHandler := gateway.NewHandler(federationGateway, app.EventBus, r)
 						r.Mount("/federation/gateway", gatewayHandler.Routes())
 						fmt.Println("Federation Gateway initialized")
 					}
