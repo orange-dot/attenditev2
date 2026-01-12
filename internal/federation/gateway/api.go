@@ -14,12 +14,12 @@ import (
 // Handler provides HTTP handlers for the gateway
 type Handler struct {
 	gateway   *Gateway
-	bus       *events.Bus
+	bus       events.EventBus
 	localMux  http.Handler // Router for local services
 }
 
 // NewHandler creates a new gateway handler
-func NewHandler(gateway *Gateway, bus *events.Bus, localMux http.Handler) *Handler {
+func NewHandler(gateway *Gateway, bus events.EventBus, localMux http.Handler) *Handler {
 	return &Handler{
 		gateway:  gateway,
 		bus:      bus,

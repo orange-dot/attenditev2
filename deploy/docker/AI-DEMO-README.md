@@ -16,7 +16,7 @@ docker-compose -f docker-compose.ai-demo.yml up -d --build
 | **Platform API** | http://localhost:8080 | REST API |
 | **AI Mock** | http://localhost:5000 | Simulacija LLM servisa |
 | **PostgreSQL** | localhost:5432 | Baza podataka |
-| **NATS** | localhost:4222 | Event bus |
+| **KurrentDB** | localhost:2113 | Event streaming |
 
 ## Kako Koristiti
 
@@ -82,8 +82,8 @@ curl http://localhost:8080/api/v1/ai/health
                     ┌────────────┴────────────┐
                     │                         │
               ┌─────▼─────┐            ┌──────▼─────┐
-              │ PostgreSQL│            │   NATS     │
-              │  (5432)   │            │  (4222)    │
+              │ PostgreSQL│            │ KurrentDB  │
+              │  (5432)   │            │  (2113)    │
               └───────────┘            └────────────┘
 ```
 

@@ -109,7 +109,7 @@ DELIVERABLES:
 │   └── Basic RBAC (admin, worker roles)            ✅
 │
 └── Event infrastructure
-    ├── NATS JetStream abstraction                  ✅
+    ├── KurrentDB/EventStoreDB abstraction          ✅
     ├── Event bus                                   ✅
     └── Audit event subscriber                      ✅
 ```
@@ -449,8 +449,8 @@ DELIVERABLES:
 │   └─────────────────┘                        │        INFRASTRUCTURE          │  │
 │                                              │                                │  │
 │   ┌─────────────────┐                        │  ┌────────┐  ┌────────┐       │  │
-│   │ Socijalna Karta │                        │  │  NATS  │  │Postgres│       │  │
-│   │  (via Servisna  │◄───── Query/Response ──│  │JetStrm │  │   DB   │       │  │
+│   │ Socijalna Karta │                        │  │Kurrent │  │Postgres│       │  │
+│   │  (via Servisna  │◄───── Query/Response ──│  │   DB   │  │   DB   │       │  │
 │   │   magistrala)   │                        │  └────────┘  └────────┘       │  │
 │   └─────────────────┘                        │                                │  │
 │                                              │  ┌────────┐  ┌────────┐       │  │
@@ -492,7 +492,7 @@ DELIVERABLES:
 |-----------|---------------|----------|
 | Kubernetes | 1.28+ (3-node cluster minimum) | Kragujevac DC |
 | PostgreSQL | 15+ (8GB RAM, 100GB SSD) | Kragujevac DC |
-| NATS | 2.10+ (3-node cluster) | Kragujevac DC |
+| KurrentDB | 24.10+ (EventStoreDB) | Kragujevac DC |
 | MinIO | Latest (50GB initial storage) | Kragujevac DC |
 | OPA | Latest | Kragujevac DC |
 | Edge Adapters | Docker containers | Kikinda (each institution) |

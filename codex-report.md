@@ -76,7 +76,7 @@
 - This works only when KurrentDB is available and audit module is mounted.
 
 ## Additional Observations / Risks
-- README mentions NATS, but implementation uses KurrentDB for event bus. `README.md`, `internal/shared/events/bus.go`
+- Implementation uses KurrentDB for event bus with HTTP/AtomPub fallback when gRPC unavailable. `internal/shared/events/bus.go`
 - Trust Authority certificates are self-signed in memory; no persistence or revocation list storage. `internal/federation/trust/authority.go`
 - Document signing has no crypto validation path; signatures are effectively placeholders. `internal/document/*`
 - Privacy guard can log violations to audit if KurrentDB is up; otherwise it silently no-ops. `cmd/platform/main.go`

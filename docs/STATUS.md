@@ -33,7 +33,7 @@ MVP core platform complete (Phases 1-6). Adapters and coordination service imple
 - [x] Configuration management with env vars
 - [x] PostgreSQL connection pool with migrations
 - [x] JWT authentication middleware
-- [x] NATS event bus abstraction
+- [x] KurrentDB (EventStoreDB) event bus abstraction
 - [x] Shared types (ID, JMBG, Address)
 - [x] Error handling package
 
@@ -42,7 +42,7 @@ MVP core platform complete (Phases 1-6). Adapters and coordination service imple
 - [x] **Case Module (DDD)** - Full aggregate with lifecycle, participants, assignments, events
 - [x] **Document Module** - Documents with versioning, signatures, sharing
 - [x] **Audit Module** - Append-only logging with hash chain integrity
-- [x] **Event Publishing** - All modules publish events to NATS
+- [x] **Event Publishing** - All modules publish events to KurrentDB
 - [x] **Audit Subscriber** - Automatic audit logging from domain events
 
 ### Phase 3: Federation Layer
@@ -171,7 +171,8 @@ MVP core platform complete (Phases 1-6). Adapters and coordination service imple
 | `DB_USER` | platform | Database user |
 | `DB_PASSWORD` | platform | Database password |
 | `DB_NAME` | platform | Database name |
-| `NATS_URL` | nats://localhost:4222 | NATS server |
+| `KURRENTDB_HOST` | localhost | KurrentDB host |
+| `KURRENTDB_PORT` | 2113 | KurrentDB port |
 | `JWT_SECRET` | dev-secret | JWT signing key |
 | `OPA_URL` | http://localhost:8181 | OPA server |
 | `OPA_ENABLED` | false | Enable OPA |
@@ -223,7 +224,7 @@ internal/
     config/           # Configuration
     database/         # PostgreSQL + migrations
     errors/           # Error types
-    events/           # NATS event bus
+    events/           # KurrentDB event bus
     metrics/          # Prometheus metrics
     middleware/       # Security middleware
     policy/           # OPA client

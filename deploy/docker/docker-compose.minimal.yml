@@ -5,7 +5,7 @@
 #
 # Komponente:
 # - PostgreSQL (baza)
-# - NATS (event bus)
+# - KurrentDB/EventStoreDB (event streaming)
 # - Platform API
 
 version: '3.8'
@@ -34,19 +34,24 @@ services:
     restart: unless-stopped
 
   # ===========================================
-  # NATS JetStream - Event Bus
+  # KurrentDB (EventStoreDB) - Event Streaming
   # ===========================================
-  nats:
-    image: nats:2.10-alpine
-    container_name: platform-nats
-    command: ["--jetstream", "--store_dir=/data", "-m", "8222"]
+  kurrentdb:
+    image: eventstore/eventstore:24.2.0-jammy
+    container_name: platform-kurrentdb
+    environment:
+      EVENTSTORE_CLUSTER_SIZE: 1
+      EVENTSTORE_RUN_PROJECTIONS: All
+      EVENTSTORE_START_STANDARD_PROJECTIONS: "true"
+      EVENTSTORE_INSECURE: "true"
+      EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP: "true"
     ports:
-      - "4222:4222"   # Client
-      - "8222:8222"   # Monitoring
+      - "2113:2113"   # HTTP/gRPC
+      - "1113:1113"   # TCP (legacy)
     volumes:
-      - nats_data:/data
+      - kurrentdb_data:/var/lib/eventstore
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8222/healthz"]
+      test: ["CMD", "curl", "-sf", "http://localhost:2113/health/live"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,7 +73,9 @@ services:
       DB_USER: platform
       DB_PASSWORD: platform_dev_2024
       DB_NAME: platform
-      NATS_URL: nats://nats:4222
+      KURRENTDB_HOST: kurrentdb
+      KURRENTDB_PORT: "2113"
+      KURRENTDB_INSECURE: "true"
       JWT_SECRET: dev-secret-change-in-production
       OPA_ENABLED: "false"
       # Privacy
@@ -85,7 +92,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      nats:
+      kurrentdb:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
@@ -97,7 +104,7 @@ services:
 volumes:
   postgres_data:
     driver: local
-  nats_data:
+  kurrentdb_data:
     driver: local
 
 networks:

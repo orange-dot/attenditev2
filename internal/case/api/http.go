@@ -16,11 +16,11 @@ import (
 // Handler provides HTTP handlers for the case module
 type Handler struct {
 	repo domain.Repository
-	bus  *events.Bus
+	bus  events.EventBus
 }
 
 // NewHandler creates a new case handler
-func NewHandler(repo domain.Repository, bus *events.Bus) *Handler {
+func NewHandler(repo domain.Repository, bus events.EventBus) *Handler {
 	return &Handler{repo: repo, bus: bus}
 }
 

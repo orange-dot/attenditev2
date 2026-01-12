@@ -35,10 +35,10 @@ scrape_configs:
       - targets: ['keycloak:8180']
     metrics_path: /metrics
 
-  # NATS
-  - job_name: 'nats'
+  # KurrentDB (EventStoreDB)
+  - job_name: 'kurrentdb'
     static_configs:
-      - targets: ['nats:8222']
+      - targets: ['kurrentdb:2113']
     metrics_path: /metrics
 
   # MinIO

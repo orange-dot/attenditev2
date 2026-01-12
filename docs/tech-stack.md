@@ -54,11 +54,11 @@
 
 | Component | Technology | License | K8s Support |
 |-----------|------------|---------|-------------|
-| Event Streaming | NATS JetStream | Apache 2.0 | Helm charts |
-| Task Queue | NATS JetStream | Apache 2.0 | (same as above) |
+| Event Streaming | KurrentDB (EventStoreDB) | License | Helm charts |
+| Task Queue | KurrentDB (EventStoreDB) | License | (same as above) |
 | Secure Messaging | Custom (Go) | - | Helm charts |
 
-> **NATS JetStream** replaces both Kafka and RabbitMQ - single Go-native system for events and task queues. **Custom Secure Messaging** replaces Matrix/Synapse - simpler E2EE messaging built on PostgreSQL + WebSocket.
+> **KurrentDB (EventStoreDB)** provides event sourcing and streaming with built-in projections. Supports both gRPC and HTTP/AtomPub APIs for flexibility. **Custom Secure Messaging** replaces Matrix/Synapse - simpler E2EE messaging built on PostgreSQL + WebSocket.
 
 ### Workflow & Documents Layer
 
@@ -80,7 +80,7 @@
 | Cache | Valkey | BSD-3 | Operator |
 | Stream Processing | Custom (Go) | - | Helm charts |
 
-> **PostgreSQL FTS** replaces OpenSearch - uses GIN indexes, tsvector/tsquery for case search. Logs handled by Loki. **Custom Stream Processing** replaces Flink - Go workers consuming from NATS for real-time analytics, SLA monitoring, and alerting.
+> **PostgreSQL FTS** replaces OpenSearch - uses GIN indexes, tsvector/tsquery for case search. Logs handled by Loki. **Custom Stream Processing** replaces Flink - Go workers consuming from KurrentDB for real-time analytics, SLA monitoring, and alerting.
 
 ### Observability Layer
 
@@ -115,9 +115,9 @@
 |-----------|------------|---------|-------------|
 | CAD System | Custom (Go) | - | Helm charts |
 | Location Services | PostgreSQL + PostGIS | PostgreSQL | CloudNativePG |
-| Real-time Tracking | NATS + WebSocket | Apache 2.0 | - |
+| Real-time Tracking | KurrentDB + WebSocket | License | - |
 
-> **Custom CAD** replaces Resgrid Core - built on Temporal (dispatch workflows), NATS (real-time events), PostGIS (location/routing), WebSocket (live tracking). Tighter integration with platform.
+> **Custom CAD** replaces Resgrid Core - built on Temporal (dispatch workflows), KurrentDB (real-time events), PostGIS (location/routing), WebSocket (live tracking). Tighter integration with platform.
 
 ---
 
@@ -281,7 +281,7 @@ ENFORCED BY CODE STRUCTURE:
 │
 ├── pkg/                            # Public libraries (extractable)
 │   ├── crypto/                     # Signing, certificates
-│   └── nats/                       # NATS client wrapper
+│   └── kurrentdb/                  # KurrentDB client wrapper
 │
 ├── api/                            # API specifications
 │   ├── openapi/
@@ -353,8 +353,8 @@ ENFORCED BY CODE STRUCTURE:
 │  │                  PLATFORM SERVICES (External)                       │  │
 │  │                                                                      │  │
 │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐               │  │
-│  │  │ Keycloak │ │   OPA    │ │ OpenBao  │ │   NATS   │               │  │
-│  │  │ Identity │ │  Policy  │ │ Secrets  │ │ JetStream│               │  │
+│  │  │ Keycloak │ │   OPA    │ │ OpenBao  │ │ KurrentDB│               │  │
+│  │  │ Identity │ │  Policy  │ │ Secrets  │ │ (ESDB)   │               │  │
 │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘               │  │
 │  │                                                                      │  │
 │  │  ┌──────────┐ ┌──────────┐                                          │  │
@@ -421,10 +421,10 @@ ENFORCED BY CODE STRUCTURE:
 | **Service Mesh** | **None (removed Linkerd)** | Direct mTLS; Federation Layer handles inter-agency; reduce complexity |
 | **Interoperability** | **Custom Go over X-Road** | Full Go stack; maximum control; tailored to needs |
 | **API Gateway** | **Custom Go over Tyk** | Full control; simpler; integrated with stack |
-| **Events/Queue** | **NATS JetStream over Kafka/RabbitMQ** | Go-native; single system for both; simpler ops |
+| **Events/Queue** | **KurrentDB (EventStoreDB) over Kafka/RabbitMQ** | Event sourcing native; gRPC + HTTP APIs; projections built-in |
 | **Messaging** | **Custom Go over Matrix/Synapse** | Simpler; E2EE on PostgreSQL + WebSocket |
 | **Search** | **PostgreSQL FTS over OpenSearch** | Built-in; no Java; GIN indexes |
-| **Stream Processing** | **Custom Go over Flink** | Simpler workers; NATS consumers; full control |
+| **Stream Processing** | **Custom Go over Flink** | Simpler workers; KurrentDB consumers; full control |
 | **CAD** | **Custom Go over Resgrid** | Tighter integration; Go stack; PostGIS |
 | **Cache** | **Valkey over Redis** | Fully OSS (Linux Foundation fork) |
 | **Citizen Identity** | **Serbia eID via Keycloak** | National eID federation; eIDAS compliant |
@@ -437,7 +437,7 @@ ENFORCED BY CODE STRUCTURE:
 - **Maximum control philosophy**: Custom Go components where feasible, external only when truly necessary
 - **Modular monolith**: Single deployable binary with well-defined module boundaries; extract to microservices only when proven necessary
 - **DDD pragmatism**: Apply DDD patterns only to complex domains (Case, Dispatch); simple CRUD for reference data (Citizen, Agency)
-- Only external infrastructure: Keycloak (identity critical), Temporal (excellent Go), MinIO (excellent Go), NATS (Go), PostgreSQL, Observability stack
+- Only external infrastructure: Keycloak (identity critical), Temporal (excellent Go), MinIO (excellent Go), KurrentDB/EventStoreDB, PostgreSQL, Observability stack
 - All custom components require security audit before production
 - No Java in application code; Keycloak only Java infrastructure remaining
 - OpenTelemetry SDK for distributed tracing (no sidecar needed)

@@ -212,93 +212,39 @@ services:
       - platform-prod
 
   # ===========================================
-  # NATS JetStream Cluster (3 nodes)
+  # KurrentDB (EventStoreDB) - Event Streaming
+  # Note: For production HA, use EventStoreDB cluster or managed service
   # ===========================================
-  nats-1:
-    image: nats:2.10-alpine
-    container_name: platform-nats-1
-    command:
-      - "--name=nats-1"
-      - "--cluster_name=platform-cluster"
-      - "--jetstream"
-      - "--store_dir=/data"
-      - "--cluster=nats://0.0.0.0:6222"
-      - "--routes=nats://nats-2:6222,nats://nats-3:6222"
-      - "-m"
-      - "8222"
-      - "--user=${NATS_USER}"
-      - "--pass=${NATS_PASSWORD}"
+  kurrentdb:
+    image: eventstore/eventstore:24.2.0-jammy
+    container_name: platform-kurrentdb
+    environment:
+      EVENTSTORE_CLUSTER_SIZE: 1
+      EVENTSTORE_RUN_PROJECTIONS: All
+      EVENTSTORE_START_STANDARD_PROJECTIONS: "true"
+      EVENTSTORE_INSECURE: "false"
+      EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP: "true"
+      EVENTSTORE_EXT_TCP_PORT: 1113
+      EVENTSTORE_HTTP_PORT: 2113
+      EVENTSTORE_CERTIFICATE_FILE: /certs/server.crt
+      EVENTSTORE_CERTIFICATE_PRIVATE_KEY_FILE: /certs/server.key
     volumes:
-      - nats_1_data:/data
+      - kurrentdb_data:/var/lib/eventstore
+      - kurrentdb_logs:/var/log/eventstore
+      - ./certs/kurrentdb:/certs:ro
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 1G
+          cpus: '2'
+          memory: 4G
         reservations:
-          cpus: '0.25'
-          memory: 256M
+          cpus: '0.5'
+          memory: 1G
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8222/healthz"]
+      test: ["CMD", "curl", "-sf", "http://localhost:2113/health/live"]
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: always
-    networks:
-      - platform-prod
-
-  nats-2:
-    image: nats:2.10-alpine
-    container_name: platform-nats-2
-    command:
-      - "--name=nats-2"
-      - "--cluster_name=platform-cluster"
-      - "--jetstream"
-      - "--store_dir=/data"
-      - "--cluster=nats://0.0.0.0:6222"
-      - "--routes=nats://nats-1:6222,nats://nats-3:6222"
-      - "-m"
-      - "8222"
-      - "--user=${NATS_USER}"
-      - "--pass=${NATS_PASSWORD}"
-    volumes:
-      - nats_2_data:/data
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    restart: always
-    networks:
-      - platform-prod
-
-  nats-3:
-    image: nats:2.10-alpine
-    container_name: platform-nats-3
-    command:
-      - "--name=nats-3"
-      - "--cluster_name=platform-cluster"
-      - "--jetstream"
-      - "--store_dir=/data"
-      - "--cluster=nats://0.0.0.0:6222"
-      - "--routes=nats://nats-1:6222,nats://nats-2:6222"
-      - "-m"
-      - "8222"
-      - "--user=${NATS_USER}"
-      - "--pass=${NATS_PASSWORD}"
-    volumes:
-      - nats_3_data:/data
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
     restart: always
     networks:
       - platform-prod
@@ -630,10 +576,12 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       DB_SSL_MODE: require
-      # NATS
-      NATS_URL: nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222
-      NATS_USER: ${NATS_USER}
-      NATS_PASSWORD: ${NATS_PASSWORD}
+      # KurrentDB (EventStoreDB)
+      KURRENTDB_HOST: kurrentdb
+      KURRENTDB_PORT: "2113"
+      KURRENTDB_INSECURE: "false"
+      KURRENTDB_USERNAME: ${KURRENTDB_USERNAME:-admin}
+      KURRENTDB_PASSWORD: ${KURRENTDB_PASSWORD}
       # Redis
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       # Auth
@@ -710,9 +658,11 @@ services:
           memory: 256M
     environment:
       ENV: production
-      NATS_URL: nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222
-      NATS_USER: ${NATS_USER}
-      NATS_PASSWORD: ${NATS_PASSWORD}
+      KURRENTDB_HOST: kurrentdb
+      KURRENTDB_PORT: "2113"
+      KURRENTDB_INSECURE: "false"
+      KURRENTDB_USERNAME: ${KURRENTDB_USERNAME:-admin}
+      KURRENTDB_PASSWORD: ${KURRENTDB_PASSWORD}
       DB_HOST: postgres-primary
       DB_PORT: "5432"
       DB_USER: ${DB_USER}
@@ -733,9 +683,8 @@ volumes:
   traefik_logs:
   postgres_data:
   keycloak_db_data:
-  nats_1_data:
-  nats_2_data:
-  nats_3_data:
+  kurrentdb_data:
+  kurrentdb_logs:
   minio_1_data:
   minio_2_data:
   minio_3_data:

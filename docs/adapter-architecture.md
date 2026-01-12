@@ -297,7 +297,7 @@ eUprava:
 │   │ Dom zdravlja│──┘    │   Primary    │──┤     │                     │   │
 │   │ (Various)   │──────►│   Care       │  ├────►│  ┌─────────────┐    │   │
 │   └─────────────┘       │   Adapter    │  │     │  │ Event Bus   │    │   │
-│                         └──────────────┘  │     │  │ (NATS)      │    │   │
+│                         └──────────────┘  │     │  │ (KurrentDB) │    │   │
 │   ┌─────────────┐                         │     │  └─────────────┘    │   │
 │   │ CSR Lokalni │       ┌──────────────┐  │     │                     │   │
 │   │ (Various)   │──────►│   Social     │──┤     │  ┌─────────────┐    │   │
@@ -468,16 +468,16 @@ type DocumentExchangeAdapter interface {
 │   EDGE (Institucija)              CENTRAL (Kragujevac)                   │
 │                                                                          │
 │   ┌──────────────┐               ┌──────────────────────────────────┐   │
-│   │ Case Event   │               │         NATS JetStream           │   │
+│   │ Case Event   │               │         KurrentDB/EventStoreDB   │   │
 │   │ (lokalno)    │               │                                  │   │
 │   │              │──WebSocket───►│  Streams:                        │   │
-│   │ - Created    │               │  ├── cases.created               │   │
-│   │ - Updated    │               │  ├── cases.updated               │   │
-│   │ - Escalated  │               │  ├── cases.escalated             │   │
-│   │ - Closed     │               │  ├── cases.shared                │   │
-│   └──────────────┘               │  └── cases.emergency             │   │
+│   │ - Created    │               │  ├── cases-created               │   │
+│   │ - Updated    │               │  ├── cases-updated               │   │
+│   │ - Escalated  │               │  ├── cases-escalated             │   │
+│   │ - Closed     │               │  ├── cases-shared                │   │
+│   └──────────────┘               │  └── cases-emergency             │   │
 │                                  │                                  │   │
-│                                  │  Consumer Groups:                │   │
+│                                  │  Persistent Subscriptions:       │   │
 │                                  │  ├── audit-service               │   │
 │                                  │  ├── notification-service        │   │
 │                                  │  ├── analytics-service           │   │

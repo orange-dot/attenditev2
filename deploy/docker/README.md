@@ -4,7 +4,7 @@ Tri opcije za Docker deployment:
 
 | Setup | Prostor | Komponente | Namena |
 |-------|---------|------------|--------|
-| **Minimal** | ~5 GB | PostgreSQL, NATS, API | Brzi razvoj |
+| **Minimal** | ~5 GB | PostgreSQL, KurrentDB, API | Brzi razvoj |
 | **Dev** | ~15-20 GB | + Keycloak, MinIO, OPA, Monitoring | Kompletan dev |
 | **Prod** | ~50+ GB | HA cluster, SSL, Traefik | Staging/Demo |
 
@@ -30,7 +30,7 @@ docker-compose -f docker-compose.minimal.yml down
 
 **Pristup:**
 - API: http://localhost:8080
-- NATS Monitoring: http://localhost:8222
+- KurrentDB UI: http://localhost:2113
 
 ---
 
@@ -56,7 +56,7 @@ docker-compose -f docker-compose.dev.yml logs -f
 | Grafana | http://localhost:3000 | admin / admin_dev_2024 |
 | Prometheus | http://localhost:9090 | - |
 | MinIO Console | http://localhost:9001 | minioadmin / minioadmin_dev_2024 |
-| NATS | http://localhost:8222 | - |
+| KurrentDB UI | http://localhost:2113 | - |
 | Loki | http://localhost:3100 | - |
 
 ---
@@ -119,8 +119,8 @@ deploy/docker/
 ├── loki/                        # Loki config
 │   └── loki.yml
 │
-├── nats/                        # NATS config
-│   └── nats.conf
+├── kurrentdb/                   # KurrentDB config (if needed)
+│   └── (empty - uses defaults)
 │
 ├── keycloak/                    # Keycloak realm (TODO)
 │   └── realm-export.json
@@ -153,8 +153,8 @@ docker exec -it platform-postgres psql -U platform -d platform
 # API container
 docker exec -it platform-api sh
 
-# NATS
-docker exec -it platform-nats nats-server --help
+# KurrentDB
+docker exec -it platform-kurrentdb curl http://localhost:2113/streams
 ```
 
 ### Backup
