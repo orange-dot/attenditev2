@@ -93,12 +93,17 @@ func buildConnectionString(cfg config.KurrentDBConfig) string {
 		auth = fmt.Sprintf("%s:%s@", cfg.Username, cfg.Password)
 	}
 
-	var tls string
+	// Build query parameters
+	params := ""
 	if cfg.Insecure {
-		tls = "?tls=false"
+		params = "?tls=false&tlsVerifyCert=false"
+	}
+	// Add keep-alive and timeout settings for better connection stability
+	if params != "" {
+		params += "&keepAliveInterval=10000&keepAliveTimeout=10000&discoveryInterval=100&maxDiscoverAttempts=3&gossipTimeout=5"
 	}
 
-	return fmt.Sprintf("esdb://%s%s:%d%s", auth, cfg.Host, cfg.Port, tls)
+	return fmt.Sprintf("esdb://%s%s:%d%s", auth, cfg.Host, cfg.Port, params)
 }
 
 // Publish publishes an event to the bus

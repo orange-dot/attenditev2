@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,24 +20,37 @@ import (
 	"github.com/serbia-gov/platform/internal/audit"
 	caseapi "github.com/serbia-gov/platform/internal/case/api"
 	caseinfra "github.com/serbia-gov/platform/internal/case/infrastructure"
+	"github.com/serbia-gov/platform/internal/coordination"
 	"github.com/serbia-gov/platform/internal/document"
+	"github.com/serbia-gov/platform/internal/federation/gateway"
 	"github.com/serbia-gov/platform/internal/federation/trust"
+	"github.com/serbia-gov/platform/internal/notification"
 	"github.com/serbia-gov/platform/internal/privacy"
-	"github.com/serbia-gov/platform/internal/simulation"
 	"github.com/serbia-gov/platform/internal/shared/auth"
 	"github.com/serbia-gov/platform/internal/shared/config"
 	"github.com/serbia-gov/platform/internal/shared/database"
 	"github.com/serbia-gov/platform/internal/shared/events"
 	"github.com/serbia-gov/platform/internal/shared/metrics"
 	secmiddleware "github.com/serbia-gov/platform/internal/shared/middleware"
+	"github.com/serbia-gov/platform/internal/shared/policy"
+	"github.com/serbia-gov/platform/internal/shared/types"
+	"github.com/serbia-gov/platform/internal/simulation"
 )
 
 // App holds all application dependencies
 type App struct {
-	Config       *config.Config
-	DB           *database.DB
-	Bus          *events.Bus
-	PrivacyGuard *privacy.PrivacyGuard
+	Config            *config.Config
+	DB                *database.DB
+	Bus               *events.Bus
+	HTTPBus           *events.HTTPBus
+	EventBus          events.EventBus // Interface for either gRPC or HTTP
+	EventBusType      string          // "grpc" or "http"
+	OPAClient         *policy.Client
+	PrivacyGuard      *privacy.PrivacyGuard
+	NotificationSvc   *notification.Service
+	CoordinationSvc   *coordination.Service
+	TrustAuthority    *trust.Authority
+	FederationGateway *gateway.Gateway
 }
 
 func main() {
@@ -63,26 +79,54 @@ func main() {
 		}
 	}
 
-	// Initialize event bus with KurrentDB (optional - skip if not available)
-	bus, err := events.NewBus(ctx, cfg.KurrentDB)
+	// Initialize event bus with KurrentDB (try HTTP first, then gRPC)
+	eventBus, busType, err := events.NewEventBus(ctx, cfg.KurrentDB)
 	if err != nil {
-		fmt.Printf("Warning: KurrentDB not available: %v\n", err)
+		fmt.Printf("Warning: EventStoreDB not available: %v\n", err)
 		fmt.Println("Running without event streaming...")
 	} else {
-		app.Bus = bus
-		defer bus.Close()
-		fmt.Println("KurrentDB Event Bus initialized")
+		app.EventBus = eventBus
+		app.EventBusType = busType
+		defer eventBus.Close()
+
+		// Set specific bus type for backwards compatibility
+		if busType == "http" {
+			app.HTTPBus = eventBus.(*events.HTTPBus)
+			fmt.Printf("EventStoreDB Event Bus initialized (HTTP mode)\n")
+		} else {
+			app.Bus = eventBus.(*events.Bus)
+			fmt.Printf("EventStoreDB Event Bus initialized (gRPC mode)\n")
+		}
+	}
+
+	// Initialize OPA client for policy evaluation
+	opaClient := policy.NewClient(cfg.OPA)
+	app.OPAClient = opaClient
+	if cfg.OPA.Enabled {
+		if err := opaClient.Health(ctx); err != nil {
+			fmt.Printf("Warning: OPA not available: %v\n", err)
+			fmt.Println("Policy enforcement will be disabled")
+		} else {
+			fmt.Println("OPA Policy Engine connected")
+		}
+	} else {
+		fmt.Println("OPA Policy Engine disabled (dev mode - all access allowed)")
 	}
 
 	// Initialize Privacy Guard (optional - skip in local-only mode)
 	if cfg.Privacy.EnablePrivacyGuard && cfg.Privacy.FacilityType == "central" {
 		// Create a simple violation logger using audit
 		var violationHandler privacy.ViolationHandler
-		if app.Bus != nil {
-			// Use KurrentDB-based audit repository
-			auditRepo := audit.NewKurrentDBRepository(app.Bus.Client())
-			// Wrap audit repo as violation handler
-			violationHandler = &auditViolationHandler{auditRepo: auditRepo}
+		if app.EventBus != nil {
+			var auditRepo audit.AuditRepository
+			if app.EventBusType == "http" && app.HTTPBus != nil {
+				auditRepo = audit.NewHTTPRepository(app.HTTPBus.HTTPClient())
+			} else if app.Bus != nil {
+				auditRepo = audit.NewKurrentDBRepository(app.Bus.Client())
+			}
+			if auditRepo != nil {
+				violationHandler = &auditViolationHandler{auditRepo: auditRepo}
+			}
 		}
 
 		guardConfig := privacy.PrivacyGuardConfig{
@@ -143,21 +187,46 @@ func main() {
 			documentHandler := document.NewHandler(documentRepo, app.Bus)
 			r.Mount("/documents", documentHandler.Routes())
 
-			// Audit module - uses KurrentDB (append-only event store)
-			if app.Bus != nil {
-				auditRepo := audit.NewKurrentDBRepository(app.Bus.Client())
-				if err := auditRepo.Initialize(ctx); err != nil {
-					fmt.Printf("Warning: Audit initialization failed: %v\n", err)
-				}
-				auditHandler := audit.NewHandler(auditRepo)
-				r.Mount("/audit", auditHandler.Routes())
+			// Audit module - uses EventStoreDB (append-only event store)
+			if app.EventBus != nil {
+				var auditRepo audit.AuditRepository
 
-				// Start audit subscriber
-				auditSubscriber := audit.NewSubscriber(auditRepo, app.Bus)
-				if err := auditSubscriber.Start(ctx); err != nil {
-					fmt.Printf("Warning: Audit subscriber failed to start: %v\n", err)
-				} else {
-					fmt.Println("Audit subscriber started (KurrentDB)")
+				if app.EventBusType == "http" && app.HTTPBus != nil {
+					// Use HTTP repository
+					httpRepo := audit.NewHTTPRepository(app.HTTPBus.HTTPClient())
+					if err := httpRepo.Initialize(ctx); err != nil {
+						fmt.Printf("Warning: Audit initialization failed: %v\n", err)
+					}
+					auditRepo = httpRepo
+					fmt.Println("Audit module initialized (HTTP mode)")
+
+					// Start audit subscriber for HTTP mode
+					auditSubscriber := audit.NewSubscriber(httpRepo, app.EventBus)
+					if err := auditSubscriber.Start(ctx); err != nil {
+						fmt.Printf("Warning: Audit subscriber failed to start: %v\n", err)
+					} else {
+						fmt.Println("Audit subscriber started (HTTP mode)")
+					}
+				} else if app.Bus != nil {
+					// Use gRPC repository
+					grpcRepo := audit.NewKurrentDBRepository(app.Bus.Client())
+					if err := grpcRepo.Initialize(ctx); err != nil {
+						fmt.Printf("Warning: Audit initialization failed: %v\n", err)
+					}
+					auditRepo = grpcRepo
+
+					// Start audit subscriber for gRPC mode
+					auditSubscriber := audit.NewSubscriber(grpcRepo, app.EventBus)
+					if err := auditSubscriber.Start(ctx); err != nil {
+						fmt.Printf("Warning: Audit subscriber failed to start: %v\n", err)
+					} else {
+						fmt.Println("Audit subscriber started (gRPC mode)")
+					}
+				}
+
+				if auditRepo != nil {
+					auditHandler := audit.NewHandler(auditRepo)
+					r.Mount("/audit", auditHandler.Routes())
 				}
 			}
 
@@ -166,12 +235,59 @@ func main() {
 			if err != nil {
 				fmt.Printf("Warning: Trust Authority initialization failed: %v\n", err)
 			} else {
+				app.TrustAuthority = trustAuthority
+
 				// Seed Kikinda pilot agencies
 				seedKikindaPilot(trustAuthority)
 
 				trustHandler := trust.NewHandler(trustAuthority)
 				r.Mount("/federation/trust", trustHandler.Routes())
 				fmt.Println("Federation Trust Authority initialized")
+
+				// Federation Gateway - for cross-agency communication
+				_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+				if err != nil {
+					fmt.Printf("Warning: Failed to generate gateway key: %v\n", err)
+				} else {
+					gatewayConfig := gateway.Config{
+						AgencyID:   types.NewID(),
+						AgencyCode: cfg.Privacy.FacilityCode,
+						PrivateKey: privateKey,
+					}
+					federationGateway, err := gateway.NewGateway(gatewayConfig, trustAuthority)
+					if err != nil {
+						fmt.Printf("Warning: Federation Gateway initialization failed: %v\n", err)
+					} else {
+						app.FederationGateway = federationGateway
+						gatewayHandler := gateway.NewHandler(federationGateway, app.Bus, r)
+						r.Mount("/federation/gateway", gatewayHandler.Routes())
+						fmt.Println("Federation Gateway initialized")
+					}
+				}
+			}
+
+			// Notification Service - with mock providers for MVP
+			pushProvider := notification.NewMockPushProvider()
+			smsProvider := notification.NewMockSMSProvider()
+			emailProvider := notification.NewMockEmailProvider()
+			notifConfig := notification.DefaultServiceConfig()
+			notificationSvc := notification.NewService(pushProvider, smsProvider, emailProvider, notifConfig)
+			app.NotificationSvc = notificationSvc
+			if err := notificationSvc.Start(ctx); err != nil {
+				fmt.Printf("Warning: Notification Service failed to start: %v\n", err)
+			} else {
+				fmt.Println("Notification Service initialized (mock providers)")
+			}
+
+			// Coordination Service - for event processing
+			// Note: Health and Social adapters require external services, so we use nil for MVP
+			coordConfig := coordination.DefaultServiceConfig()
+			coordinationSvc := coordination.NewService(nil, nil, notificationSvc, coordConfig)
+			app.CoordinationSvc = coordinationSvc
+			if err := coordinationSvc.Start(ctx); err != nil {
+				fmt.Printf("Warning: Coordination Service failed to start: %v\n", err)
+			} else {
+				fmt.Println("Coordination Service initialized")
 			}
 		}
 
@@ -186,8 +302,8 @@ func main() {
 		}
 
 		// Simulation Module - for demo/training purposes
-		if app.Bus != nil {
-			simHandler := simulation.NewHandler(app.Bus)
+		if app.EventBus != nil {
+			simHandler := simulation.NewHandler(app.EventBus)
 			r.Mount("/simulation", simHandler.Routes())
 			fmt.Println("Simulation Module enabled")
 		}
@@ -229,6 +345,7 @@ func main() {
 	fmt.Printf("Facility Type:  %s\n", cfg.Privacy.FacilityType)
 	fmt.Printf("Facility Code:  %s\n", cfg.Privacy.FacilityCode)
 	fmt.Printf("Privacy Guard:  %v\n", cfg.Privacy.EnablePrivacyGuard)
+	fmt.Printf("OPA Policy:     %v\n", cfg.OPA.Enabled)
 	fmt.Printf("KurrentDB:      %s:%d\n", cfg.KurrentDB.Host, cfg.KurrentDB.Port)
 	fmt.Println("============================================")
 
@@ -279,8 +396,8 @@ func readyHandler(app *App) http.HandlerFunc {
 		}
 
 		// Check KurrentDB
-		if app.Bus != nil {
-			if err := app.Bus.Health(); err != nil {
+		if app.EventBus != nil {
+			if err := app.EventBus.Health(); err != nil {
 				checks["kurrentdb"] = "not ready: " + err.Error()
 			} else {
 				checks["kurrentdb"] = "ready"
@@ -289,9 +406,20 @@ func readyHandler(app *App) http.HandlerFunc {
 			checks["kurrentdb"] = "not configured"
 		}
 
+		// Check OPA
+		if app.Config.OPA.Enabled {
+			if err := app.OPAClient.Health(r.Context()); err != nil {
+				checks["opa"] = "not ready: " + err.Error()
+			} else {
+				checks["opa"] = "ready"
+			}
+		} else {
+			checks["opa"] = "disabled (dev mode)"
+		}
+
 		allReady := true
 		for _, status := range checks {
-			if status != "ready" && status != "not configured" {
+			if status != "ready" && status != "not configured" && !strings.HasPrefix(status, "disabled") {
 				allReady = false
 				break
 			}

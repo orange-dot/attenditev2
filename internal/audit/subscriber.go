@@ -13,11 +13,11 @@ import (
 // Subscriber listens to domain events and creates audit entries
 type Subscriber struct {
 	repo AuditRepository
-	bus  *events.Bus
+	bus  events.EventBus
 }
 
 // NewSubscriber creates a new audit subscriber
-func NewSubscriber(repo AuditRepository, bus *events.Bus) *Subscriber {
+func NewSubscriber(repo AuditRepository, bus events.EventBus) *Subscriber {
 	return &Subscriber{repo: repo, bus: bus}
 }
 

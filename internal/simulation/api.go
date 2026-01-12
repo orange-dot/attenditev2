@@ -14,11 +14,11 @@ import (
 
 // Handler provides HTTP handlers for simulation
 type Handler struct {
-	bus *events.Bus
+	bus events.EventBus
 }
 
 // NewHandler creates a new simulation handler
-func NewHandler(bus *events.Bus) *Handler {
+func NewHandler(bus events.EventBus) *Handler {
 	return &Handler{bus: bus}
 }
 
